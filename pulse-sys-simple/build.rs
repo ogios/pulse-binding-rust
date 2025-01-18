@@ -1,6 +1,6 @@
 fn main() {
     // Skip pkg-config check if just generating documentation.
-    if cfg!(doc) {
+    if std::env::var_os("DOCS_RS").is_some() {
         return;
     }
 
@@ -15,7 +15,7 @@ fn main() {
         #[cfg(not(any(target_os = "linux", target_os = "macos", windows)))]
         { "pulse-simple" }
     };
-    let min_version = "4.0";
+    let min_version = "5.0";
 
     let mut config = pkg_config::Config::new();
 

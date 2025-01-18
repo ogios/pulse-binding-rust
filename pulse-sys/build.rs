@@ -1,6 +1,6 @@
 fn main() {
     // Skip pkg-config check if just generating documentation.
-    if cfg!(doc) {
+    if std::env::var_os("DOCS_RS").is_some() {
         return;
     }
 
@@ -28,10 +28,8 @@ fn main() {
         { "8.0" }
         #[cfg(all(feature = "pa_v6", not(feature = "pa_v8")))]
         { "6.0" }
-        #[cfg(all(feature = "pa_v5", not(feature = "pa_v6")))]
+        #[cfg(not(feature = "pa_v6"))]
         { "5.0" }
-        #[cfg(not(feature = "pa_v5"))]
-        { "4.0" }
     };
 
     let mut config = pkg_config::Config::new();

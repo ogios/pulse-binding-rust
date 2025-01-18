@@ -1,3 +1,19 @@
+# 2.28.2 (November 27th, 2024)
+
+ * Fixed crash when audio device has null device but non-null name, thanks to @AdriaanPrinsloo on
+   github.
+ * Fixed a couple documentation typos.
+
+# 2.28.1 (July 18th, 2023)
+
+ * Fixed cross-crate version requirement.
+
+# 2.28.0 (July 18th, 2023)
+
+ * Fixed 'double-reference clone' warnings.
+ * Fixed docs.rs build failure.
+ * Dropped PA v4 support.
+
 # 2.27.1 (January 9th, 2023)
 
  * Fixed broken build status badge in readme.

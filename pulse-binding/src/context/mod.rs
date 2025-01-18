@@ -507,7 +507,7 @@ impl Context {
         // as_ptr() giving dangling pointers!
         let mut c_keys: Vec<CString> = Vec::with_capacity(keys.len());
         for key in keys {
-            c_keys.push(CString::new(key.clone()).unwrap());
+            c_keys.push(CString::new(*key).unwrap());
         }
 
         // Capture array of pointers to the above CString values.
@@ -615,8 +615,6 @@ impl Context {
     /// cookie from a custom location. Applications don’t usually need to care about the cookie at
     /// all, but if it happens that you know what the authentication cookie is and your application
     /// needs to load it from a non-standard location, feel free to use this function.
-    #[cfg(any(doc, feature = "pa_v5"))]
-    #[cfg_attr(docsrs, doc(cfg(feature = "pa_v5")))]
     pub fn load_cookie_from_file(&mut self, cookie_file_path: &str) -> Result<(), PAErr> {
         // Warning: New CStrings will be immediately freed if not bound to a variable, leading to
         // as_ptr() giving dangling pointers!

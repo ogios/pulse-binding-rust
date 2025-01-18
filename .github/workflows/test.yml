@@ -23,7 +23,7 @@ jobs:
         # Use the Ubuntu Focal (20.04) environment, which uses PA v13.99.1
         os: [ubuntu-22.04]
         rustc:
-          - 1.64.0 # Overall MSRV (Minimum supported rust version), including glib's requirement
+          - 1.70.0 # Overall MSRV (Minimum supported rust version), including glib's requirement
           - stable
           - beta
         # Allow failure?
@@ -49,20 +49,22 @@ jobs:
     env:
       # Version feature flags to test with `cargo check`
       #
-      PA_BUILD_VERSIONS: "pa_v15 pa_v14 pa_v13 pa_v12 pa_v8 pa_v6 pa_v5"
+      PA_BUILD_VERSIONS: "pa_v15 pa_v14 pa_v13 pa_v12 pa_v8 pa_v6"
       # Single feature flag to use for `cargo test` steps
       PA_TEST_VERSION: pa_v15
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
 
       - name: Install toolchain
-        uses: actions-rs/toolchain@v1
-        with:
-          profile: minimal
-          toolchain: ${{ matrix.rustc }}
-          override: true
+        run: |
+          rustup toolchain install ${{ matrix.rustc }} --profile minimal --no-self-update
+          rustup default ${{ matrix.rustc }}
+          echo CARGO_TERM_COLOR=always >> $GITHUB_ENV
+          echo RUST_BACKTRACE=1 >> $GITHUB_ENV
+          rustc -V
+          cargo -V
 
       - name: Install PulseAudio and `libpulse-dev`
         run: |
@@ -73,11 +75,6 @@ jobs:
         run: |
           systemctl --user start pulseaudio
           systemctl --user status pulseaudio
-
-      - name: Check toolchain versions
-        run: |
-          cargo -V
-          rustc -V
 
       - name: Check building main binding (cargo check)
         working-directory: ./pulse-binding

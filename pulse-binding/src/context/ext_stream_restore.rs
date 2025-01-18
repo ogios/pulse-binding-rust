@@ -53,7 +53,7 @@ impl<'a> Info<'a> {
                 },
                 channel_map: src.channel_map.into(),
                 volume: src.volume.into(),
-                device: match src.name.is_null() {
+                device: match src.device.is_null() {
                     false => Some(CStr::from_ptr(src.device).to_string_lossy()),
                     true => None,
                 },
@@ -156,7 +156,7 @@ impl StreamRestore {
         // as_ptr() giving dangling pointers!
         let mut c_streams: Vec<CString> = Vec::with_capacity(streams.len());
         for stream in streams {
-            c_streams.push(CString::new(stream.clone()).unwrap());
+            c_streams.push(CString::new(*stream).unwrap());
         }
 
         // Capture array of pointers to the above CString values.
