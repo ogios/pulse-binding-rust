@@ -13,9 +13,9 @@
 
 //! Constants and routines for volume handling.
 
-use std::os::raw::c_char;
 use crate::channelmap::{pa_channel_map, pa_channel_position_mask_t, pa_channel_position_t};
 use crate::sample::pa_sample_spec;
+use std::os::raw::c_char;
 
 /// The basic volume type.
 pub type pa_volume_t = u32;
@@ -96,6 +96,7 @@ pub const fn pa_volume_is_valid(v: pa_volume_t) -> bool {
 }
 
 pub const fn pa_clamp_volume(v: pa_volume_t) -> pa_volume_t {
+    #[allow(clippy::absurd_extreme_comparisons)]
     if v < PA_VOLUME_MUTED {
         return PA_VOLUME_MUTED;
     }

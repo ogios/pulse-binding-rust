@@ -13,16 +13,17 @@
 
 //! Main loop IO events.
 
+use crate::callbacks::MultiUseCallback;
+use crate::mainloop::api::{MainloopApi, MainloopInnerType};
+use bitflags::bitflags;
 use std::os::raw::c_void;
 use std::rc::Rc;
-use bitflags::bitflags;
-use crate::mainloop::api::{MainloopApi, MainloopInnerType};
-use crate::callbacks::MultiUseCallback;
 
 pub use capi::pa_io_event as IoEventInternal;
 
 bitflags! {
     /// IO event flag set.
+    #[derive(Debug, Copy, Clone, PartialEq, Eq)]
     #[repr(transparent)]
     pub struct FlagSet: u32 {
         /// No event.
@@ -40,7 +41,8 @@ bitflags! {
 
 /// An IO event source
 pub struct IoEvent<T>
-    where T: MainloopInnerType
+where
+    T: MainloopInnerType,
 {
     /// Internal object pointer
     ptr: *mut IoEventInternal,
@@ -53,7 +55,8 @@ pub struct IoEvent<T>
 /// A reference to an IO event source, provided to the callback, allowing modification within the
 /// callback itself.
 pub struct IoEventRef<T: 'static>
-    where T: MainloopInnerType
+where
+    T: MainloopInnerType,
 {
     /// Internal object pointer
     ptr: *mut IoEventInternal,
@@ -61,19 +64,33 @@ pub struct IoEventRef<T: 'static>
     owner: Rc<T>,
 }
 
-pub(crate) type EventCb = MultiUseCallback<dyn FnMut(*mut IoEventInternal, i32, FlagSet),
-    extern "C" fn(a: *const MainloopApi, e: *mut IoEventInternal, fd: i32, events: FlagSet,
-    userdata: *mut c_void)>;
+pub(crate) type EventCb = MultiUseCallback<
+    dyn FnMut(*mut IoEventInternal, i32, FlagSet),
+    extern "C" fn(
+        a: *const MainloopApi,
+        e: *mut IoEventInternal,
+        fd: i32,
+        events: FlagSet,
+        userdata: *mut c_void,
+    ),
+>;
 
 impl<T> IoEvent<T>
-    where T: MainloopInnerType
+where
+    T: MainloopInnerType,
 {
     #[inline]
-    pub(crate) fn from_raw(ptr: *mut IoEventInternal, mainloop_inner: Rc<T>, callback: EventCb)
-        -> Self
-    {
+    pub(crate) fn from_raw(
+        ptr: *mut IoEventInternal,
+        mainloop_inner: Rc<T>,
+        callback: EventCb,
+    ) -> Self {
         assert_eq!(false, ptr.is_null());
-        Self { ptr: ptr, owner: mainloop_inner, _saved_cb: callback }
+        Self {
+            ptr: ptr,
+            owner: mainloop_inner,
+            _saved_cb: callback,
+        }
     }
 
     /// Enables or disables IO events on this object.
@@ -85,12 +102,16 @@ impl<T> IoEvent<T>
 }
 
 impl<T> IoEventRef<T>
-    where T: MainloopInnerType
+where
+    T: MainloopInnerType,
 {
     #[inline]
     pub(crate) fn from_raw(ptr: *mut IoEventInternal, mainloop_inner: Rc<T>) -> Self {
         assert_eq!(false, ptr.is_null());
-        Self { ptr: ptr, owner: mainloop_inner }
+        Self {
+            ptr: ptr,
+            owner: mainloop_inner,
+        }
     }
 
     /// Enables or disables IO events on this object.
@@ -102,7 +123,8 @@ impl<T> IoEventRef<T>
 }
 
 impl<T> Drop for IoEvent<T>
-    where T: MainloopInnerType
+where
+    T: MainloopInnerType,
 {
     fn drop(&mut self) {
         let fn_ptr = (*self.owner).get_api().io_free.unwrap();
@@ -114,11 +136,13 @@ impl<T> Drop for IoEvent<T>
 ///
 /// Warning: This is for multi-use cases! It does **not** destroy the actual closure callback, which
 /// must be accomplished separately to avoid a memory leak.
-pub(crate)
-extern "C"
-fn event_cb_proxy(_: *const MainloopApi, e: *mut IoEventInternal, fd: i32, events: FlagSet,
-    userdata: *mut c_void)
-{
+pub(crate) extern "C" fn event_cb_proxy(
+    _: *const MainloopApi,
+    e: *mut IoEventInternal,
+    fd: i32,
+    events: FlagSet,
+    userdata: *mut c_void,
+) {
     let _ = std::panic::catch_unwind(|| {
         let callback = EventCb::get_callback(userdata);
         (callback)(e, fd, events);
