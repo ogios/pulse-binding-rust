@@ -52,6 +52,14 @@ impl Info {
 
         Info { dtype: src.dtype, index: src.index, formats: formats_vec }
     }
+
+    /// Creates a copy with owned data.
+    pub fn to_owned(&self) -> Self {
+        Info {
+            formats: self.formats.iter().map(format::Info::to_owned).collect(),
+            ..*self
+        }
+    }
 }
 
 /// A wrapper object providing device restore routines to a context.

@@ -194,23 +194,6 @@ bitflags! {
     }
 }
 
-/// Some special flags for contexts.
-#[deprecated(since = "2.21.0", note = "Use the associated constants on `FlagSet`.")]
-pub mod flags {
-    use super::FlagSet;
-
-    /// No flags set.
-    pub const NOFLAGS:     FlagSet = FlagSet::NOFLAGS;
-    /// Disable autospawning of the PulseAudio daemon if required.
-    pub const NOAUTOSPAWN: FlagSet = FlagSet::NOAUTOSPAWN;
-    /// Don’t fail if the daemon is not available when [`Context::connect()`] is called, instead
-    /// enter [`State::Connecting`] state and wait for the daemon to appear.
-    ///
-    /// [`Context::connect()`]: super::Context::connect
-    /// [`State::Connecting`]: super::State::Connecting
-    pub const NOFAIL:      FlagSet = FlagSet::NOFAIL;
-}
-
 impl Context {
     /// Instantiates a new connection context with an abstract mainloop API and an application name.
     ///
@@ -225,7 +208,7 @@ impl Context {
     pub fn new(mainloop: &impl Mainloop, name: &str) -> Option<Self> {
         // Warning: New CStrings will be immediately freed if not bound to a variable, leading to
         // as_ptr() giving dangling pointers!
-        let c_name = CString::new(name.clone()).unwrap();
+        let c_name = CString::new(name).unwrap();
         let ptr =
             unsafe { capi::pa_context_new(mainloop.inner().get_api().as_ref(), c_name.as_ptr()) };
         Self::create(ptr)
@@ -244,7 +227,7 @@ impl Context {
     {
         // Warning: New CStrings will be immediately freed if not bound to a variable, leading to
         // as_ptr() giving dangling pointers!
-        let c_name = CString::new(name.clone()).unwrap();
+        let c_name = CString::new(name).unwrap();
         let ptr = unsafe { capi::pa_context_new_with_proplist(mainloop.inner().get_api().as_ref(),
             c_name.as_ptr(), proplist.0.ptr) };
         Self::create(ptr)
@@ -328,7 +311,7 @@ impl Context {
         // Warning: New CStrings will be immediately freed if not bound to a variable, leading to
         // as_ptr() giving dangling pointers!
         let c_server = match server {
-            Some(server) => CString::new(server.clone()).unwrap(),
+            Some(server) => CString::new(server).unwrap(),
             None => CString::new("").unwrap(),
         };
 
@@ -400,7 +383,7 @@ impl Context {
     {
         // Warning: New CStrings will be immediately freed if not bound to a variable, leading to
         // as_ptr() giving dangling pointers!
-        let c_name = CString::new(name.clone()).unwrap();
+        let c_name = CString::new(name).unwrap();
 
         let cb_data = box_closure_get_capi_ptr::<dyn FnMut(bool)>(Box::new(callback));
         let ptr = unsafe { capi::pa_context_set_default_sink(self.ptr, c_name.as_ptr(),
@@ -418,7 +401,7 @@ impl Context {
     {
         // Warning: New CStrings will be immediately freed if not bound to a variable, leading to
         // as_ptr() giving dangling pointers!
-        let c_name = CString::new(name.clone()).unwrap();
+        let c_name = CString::new(name).unwrap();
 
         let cb_data = box_closure_get_capi_ptr::<dyn FnMut(bool)>(Box::new(callback));
         let ptr = unsafe { capi::pa_context_set_default_source(self.ptr, c_name.as_ptr(),
@@ -446,7 +429,7 @@ impl Context {
     {
         // Warning: New CStrings will be immediately freed if not bound to a variable, leading to
         // as_ptr() giving dangling pointers!
-        let c_name = CString::new(name.clone()).unwrap();
+        let c_name = CString::new(name).unwrap();
 
         let cb_data = box_closure_get_capi_ptr::<dyn FnMut(bool)>(Box::new(callback));
         let ptr = unsafe { capi::pa_context_set_name(self.ptr, c_name.as_ptr(),
@@ -618,7 +601,7 @@ impl Context {
     pub fn load_cookie_from_file(&mut self, cookie_file_path: &str) -> Result<(), PAErr> {
         // Warning: New CStrings will be immediately freed if not bound to a variable, leading to
         // as_ptr() giving dangling pointers!
-        let c_path = CString::new(cookie_file_path.clone()).unwrap();
+        let c_path = CString::new(cookie_file_path).unwrap();
         match unsafe { capi::pa_context_load_cookie_from_file(self.ptr, c_path.as_ptr()) } {
             0 => Ok(()),
             e => Err(PAErr(e)),

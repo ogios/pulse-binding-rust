@@ -68,21 +68,13 @@ use std::borrow::Cow;
 use num_derive::{FromPrimitive, ToPrimitive};
 use crate::time::MicroSeconds;
 
-/// Maximum number of allowed channels.
-#[deprecated(since = "2.20.0", note = "use associated constants on structs instead")]
-pub const CHANNELS_MAX: u8 = capi::PA_CHANNELS_MAX;
-
-/// Maximum allowed sample rate.
-#[deprecated(since = "2.20.0", note = "use the associated constant on `Spec` instead")]
-pub const RATE_MAX: u32 = capi::PA_RATE_MAX;
-
 /// Sample format.
 ///
 /// Note, native-endian (endian-independent) associated constants are available on this type which
 /// should be preferred over direct use of the endian-specific variants, for improved flexibility
 /// and avoidance of mistakes.
 #[repr(C)]
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+#[derive(Debug, Default, Copy, Clone, PartialEq, Eq)]
 #[derive(FromPrimitive, ToPrimitive)]
 #[allow(non_camel_case_types)]
 pub enum Format {
@@ -116,6 +108,7 @@ pub enum Format {
     S24_32be,
 
     /// An invalid value.
+    #[default]
     Invalid = -1,
 }
 
@@ -155,52 +148,6 @@ impl From<capi::pa_sample_format_t> for Format {
         unsafe { std::mem::transmute(f) }
     }
 }
-
-impl Default for Format {
-    #[inline(always)]
-    fn default() -> Self {
-        Format::Invalid
-    }
-}
-
-// The following are endian-independant format references.
-
-/// A shortcut for [`SAMPLE_FLOAT32NE`].
-#[allow(deprecated)]
-#[deprecated(since = "2.20.0", note = "use the `FLOAT32NE` associated constant on `Format` instead")]
-pub const SAMPLE_FLOAT32: Format = SAMPLE_FLOAT32NE;
-
-/// Signed 16-bit PCM, native endian.
-#[deprecated(since = "2.20.0", note = "use the associated constant on `Format` instead")]
-pub const SAMPLE_S16NE:     Format = self::ei_formats::SAMPLE_S16NE;
-/// 32-bit IEEE floating point, native endian.
-#[deprecated(since = "2.20.0", note = "use the associated constant on `Format` instead")]
-pub const SAMPLE_FLOAT32NE: Format = self::ei_formats::SAMPLE_FLOAT32NE;
-/// Signed 32-bit PCM, native endian.
-#[deprecated(since = "2.20.0", note = "use the associated constant on `Format` instead")]
-pub const SAMPLE_S32NE:     Format = self::ei_formats::SAMPLE_S32NE;
-/// Signed 24-bit PCM packed, native endian.
-#[deprecated(since = "2.20.0", note = "use the associated constant on `Format` instead")]
-pub const SAMPLE_S24NE:     Format = self::ei_formats::SAMPLE_S24NE;
-/// Signed 24-bit PCM in LSB of 32-bit words, native endian.
-#[deprecated(since = "2.20.0", note = "use the associated constant on `Format` instead")]
-pub const SAMPLE_S24_32NE:  Format = self::ei_formats::SAMPLE_S24_32NE;
-
-/// Signed 16-bit PCM reverse endian.
-#[deprecated(since = "2.20.0", note = "use the associated constant on `Format` instead")]
-pub const SAMPLE_S16RE:     Format = self::ei_formats::SAMPLE_S16RE;
-/// 32-bit IEEE floating point, reverse endian.
-#[deprecated(since = "2.20.0", note = "use the associated constant on `Format` instead")]
-pub const SAMPLE_FLOAT32RE: Format = self::ei_formats::SAMPLE_FLOAT32RE;
-/// Signed 32-bit PCM, reverse endian.
-#[deprecated(since = "2.20.0", note = "use the associated constant on `Format` instead")]
-pub const SAMPLE_S32RE:     Format = self::ei_formats::SAMPLE_S32RE;
-/// Signed 24-bit PCM, packed reverse endian.
-#[deprecated(since = "2.20.0", note = "use the associated constant on `Format` instead")]
-pub const SAMPLE_S24RE:     Format = self::ei_formats::SAMPLE_S24RE;
-/// Signed 24-bit PCM, in LSB of 32-bit words, reverse endian.
-#[deprecated(since = "2.20.0", note = "use the associated constant on `Format` instead")]
-pub const SAMPLE_S24_32RE:  Format = self::ei_formats::SAMPLE_S24_32RE;
 
 /// Endian-independent format identifiers, for big-endian systems.
 #[cfg(target_endian = "big")]
@@ -434,7 +381,7 @@ impl Format {
     pub fn parse(format: &str) -> Self {
         // Warning: New CStrings will be immediately freed if not bound to a variable, leading to
         // as_ptr() giving dangling pointers!
-        let c_format = CString::new(format.clone()).unwrap();
+        let c_format = CString::new(format).unwrap();
         unsafe { capi::pa_parse_sample_format(c_format.as_ptr()).into() }
     }
 

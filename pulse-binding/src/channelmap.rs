@@ -52,13 +52,14 @@ pub const POSITION_MASK_ALL: PositionMask = 0xffffffffffffffffu64;
 /// Note, certain aliases, specifically `Left`, `Right`, `Center` and `Subwoofer`, available in the
 /// equivalent C enum are not provided here, since Rust does not allow aliases.
 #[repr(C)]
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+#[derive(Debug, Default, Copy, Clone, PartialEq, Eq)]
 #[derive(FromPrimitive, ToPrimitive)]
 pub enum Position {
     /* NOTE: This enum’s variants and variant values **must** remain identical to the `sys` crate
        (C API) equivalent */
 
     /// Invalid.
+    #[default]
     Invalid = -1,
 
     /// Mono.
@@ -178,13 +179,6 @@ pub enum Position {
     TopRearRight,
     /// Microsoft and Apple call this ‘Top Back Center’.
     TopRearCenter,
-}
-
-impl Default for Position {
-    #[inline(always)]
-    fn default() -> Self {
-        Position::Invalid
-    }
 }
 
 /// Check is equal to `sys` equivalent
@@ -365,7 +359,7 @@ impl Position {
     pub fn from_string(s: &str) -> Self {
         // Warning: New CStrings will be immediately freed if not bound to a variable, leading to
         // as_ptr() giving dangling pointers!
-        let c_str = CString::new(s.clone()).unwrap();
+        let c_str = CString::new(s).unwrap();
         unsafe { capi::pa_channel_position_from_string(c_str.as_ptr()).into() }
     }
 }
@@ -381,7 +375,7 @@ impl Map {
     pub fn new_from_string(s: &str) -> Result<Self, ()> {
         // Warning: New CStrings will be immediately freed if not bound to a variable, leading to
         // as_ptr() giving dangling pointers!
-        let c_str = CString::new(s.clone()).unwrap();
+        let c_str = CString::new(s).unwrap();
         let mut map: Self = Self::default();
         unsafe {
             if capi::pa_channel_map_parse((&mut map).as_mut(), c_str.as_ptr()).is_null() {

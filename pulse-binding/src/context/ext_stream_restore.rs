@@ -41,7 +41,7 @@ pub struct Info<'a> {
     pub mute: bool,
 }
 
-impl<'a> Info<'a> {
+impl Info<'_> {
     fn new_from_raw(p: *const InfoInternal) -> Self {
         assert!(!p.is_null());
         let src = unsafe { p.as_ref().unwrap() };
@@ -62,6 +62,15 @@ impl<'a> Info<'a> {
                     _ => true,
                 },
             }
+        }
+    }
+
+    /// Creates a copy with owned data.
+    pub fn to_owned(&self) -> Info<'static> {
+        Info {
+            name: self.name.clone().map(|o| Cow::Owned(o.into_owned())),
+            device: self.device.clone().map(|o| Cow::Owned(o.into_owned())),
+            ..*self
         }
     }
 }
@@ -130,11 +139,13 @@ impl StreamRestore {
     ///
     /// The callback must accept a `bool`, which indicates success.
     ///
-    /// Panics if the underlying C function returns a null pointer.
+    /// Panics if the underlying C function returns a null pointer, or if the length of the array is
+    /// too long to be communicated to the C function.
     pub fn write<F>(&mut self, mode: proplist::UpdateMode, data: &[&Info],
         apply_immediately: bool, callback: F) -> Operation<dyn FnMut(bool)>
         where F: FnMut(bool) + 'static
     {
+        assert!(data.len() <= u32::MAX as usize);
         let cb_data = box_closure_get_capi_ptr::<dyn FnMut(bool)>(Box::new(callback));
         let ptr = unsafe {
             capi::pa_ext_stream_restore_write(self.context, mode, mem::transmute(data.as_ptr()),

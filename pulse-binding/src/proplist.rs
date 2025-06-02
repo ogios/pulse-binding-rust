@@ -170,7 +170,7 @@ pub struct Iterator<'a> {
     phantom: PhantomData<&'a ProplistInner>,
 }
 
-impl<'a> Iterator<'a> {
+impl Iterator<'_> {
     fn new(pl: *mut ProplistInternal) -> Self {
         Self {
             pl_ref: ProplistInner { ptr: pl, weak: true },
@@ -180,7 +180,7 @@ impl<'a> Iterator<'a> {
     }
 }
 
-impl<'a> std::iter::Iterator for Iterator<'a> {
+impl std::iter::Iterator for Iterator<'_> {
     type Item = String;
     fn next(&mut self) -> Option<Self::Item> {
         let state_actual = &mut self.state as *mut *mut c_void;
@@ -198,9 +198,10 @@ impl IntoIterator for Proplist {
     type IntoIter = Iterator<'static>;
 
     fn into_iter(mut self) -> Self::IntoIter {
+        assert_eq!(false, self.0.weak);
         let mut iter = Iterator::new(self.0.ptr);
-        // Move responsibility for destruction, if it has it (is not weak itself)
-        iter.pl_ref.weak = self.0.weak;
+        // Move responsibility for destruction
+        iter.pl_ref.weak = false;
         self.0.weak = true;
         iter
     }
@@ -227,7 +228,7 @@ impl Proplist {
     pub fn new_from_string(s: &str) -> Option<Self> {
         // Warning: New CStrings will be immediately freed if not bound to a variable, leading to
         // as_ptr() giving dangling pointers!
-        let c_str = CString::new(s.clone()).unwrap();
+        let c_str = CString::new(s).unwrap();
         let ptr = unsafe { capi::pa_proplist_from_string(c_str.as_ptr()) };
         match ptr.is_null() {
             false => Some(Self::from_raw(ptr)),
@@ -251,11 +252,19 @@ impl Proplist {
         Proplist(ProplistInner { ptr: ptr, weak: true })
     }
 
+    /// Allocates a new property list and copies over every single entry from the specified list.
+    ///
+    /// If this is called on a ‘weak’ instance, a non-weak object is returned.
+    #[inline]
+    pub(crate) fn to_owned(&self) -> Self {
+        Self::from_raw(unsafe { capi::pa_proplist_copy(self.0.ptr) })
+    }
+
     /// Checks if the key is valid.
     pub fn key_is_valid(key: &str) -> bool {
         // Warning: New CStrings will be immediately freed if not bound to a variable, leading to
         // as_ptr() giving dangling pointers!
-        let c_key = CString::new(key.clone()).unwrap();
+        let c_key = CString::new(key).unwrap();
         unsafe { capi::pa_proplist_key_valid(c_key.as_ptr()) != 0 }
     }
 
@@ -266,8 +275,8 @@ impl Proplist {
     pub fn set_str(&mut self, key: &str, value: &str) -> Result<(), ()> {
         // Warning: New CStrings will be immediately freed if not bound to a variable, leading to
         // as_ptr() giving dangling pointers!
-        let c_key = CString::new(key.clone()).unwrap();
-        let c_value = CString::new(value.clone()).unwrap();
+        let c_key = CString::new(key).unwrap();
+        let c_value = CString::new(value).unwrap();
         match unsafe { capi::pa_proplist_sets(self.0.ptr, c_key.as_ptr(), c_value.as_ptr()) } {
             0 => Ok(()),
             _ => Err(()),
@@ -283,7 +292,7 @@ impl Proplist {
     pub fn set_pl(&mut self, pair: &str) -> Result<(), ()> {
         // Warning: New CStrings will be immediately freed if not bound to a variable, leading to
         // as_ptr() giving dangling pointers!
-        let c_pair = CString::new(pair.clone()).unwrap();
+        let c_pair = CString::new(pair).unwrap();
         match unsafe { capi::pa_proplist_setp(self.0.ptr, c_pair.as_ptr()) } {
             0 => Ok(()),
             _ => Err(()),
@@ -297,7 +306,7 @@ impl Proplist {
     pub fn set(&mut self, key: &str, data: &[u8]) -> Result<(), ()> {
         // Warning: New CStrings will be immediately freed if not bound to a variable, leading to
         //  as_ptr() giving dangling pointers!
-        let c_key = CString::new(key.clone()).unwrap();
+        let c_key = CString::new(key).unwrap();
         match unsafe { capi::pa_proplist_set(self.0.ptr, c_key.as_ptr(),
             data.as_ptr() as *mut c_void, data.len()) }
         {
@@ -312,7 +321,7 @@ impl Proplist {
     pub fn get_str(&self, key: &str) -> Option<String> {
         // Warning: New CStrings will be immediately freed if not bound to a variable, leading to
         // as_ptr() giving dangling pointers!
-        let c_key = CString::new(key.clone()).unwrap();
+        let c_key = CString::new(key).unwrap();
         let ptr = unsafe { capi::pa_proplist_gets(self.0.ptr, c_key.as_ptr()) };
         match ptr.is_null() {
             false => Some(unsafe { CStr::from_ptr(ptr).to_string_lossy().into_owned() }),
@@ -332,7 +341,7 @@ impl Proplist {
     pub fn get(&self, key: &str) -> Option<&[u8]> {
         // Warning: New CStrings will be immediately freed if not bound to a variable, leading to
         // as_ptr() giving dangling pointers!
-        let c_key = CString::new(key.clone()).unwrap();
+        let c_key = CString::new(key).unwrap();
         let mut data_ptr = null::<c_void>();
         let mut nbytes: usize = 0;
         if unsafe { capi::pa_proplist_get(self.0.ptr, c_key.as_ptr(), &mut data_ptr, &mut nbytes) }
@@ -356,7 +365,7 @@ impl Proplist {
     pub fn unset(&mut self, key: &str) -> Result<(), PAErr> {
         // Warning: New CStrings will be immediately freed if not bound to a variable, leading to
         // as_ptr() giving dangling pointers!
-        let c_key = CString::new(key.clone()).unwrap();
+        let c_key = CString::new(key).unwrap();
         match unsafe { capi::pa_proplist_unset(self.0.ptr, c_key.as_ptr()) } {
             0 => Ok(()),
             e => Err(PAErr(e)),
@@ -436,7 +445,7 @@ impl Proplist {
     pub fn to_string_sep(&self, sep: &str) -> Option<String> {
         // Warning: New CStrings will be immediately freed if not bound to a variable, leading to
         // as_ptr() giving dangling pointers!
-        let c_sep = CString::new(sep.clone()).unwrap();
+        let c_sep = CString::new(sep).unwrap();
         let ptr = unsafe { capi::pa_proplist_to_string_sep(self.0.ptr, c_sep.as_ptr()) };
         if ptr.is_null() {
             return None;
@@ -457,7 +466,7 @@ impl Proplist {
     pub fn contains(&self, key: &str) -> Option<bool> {
         // Warning: New CStrings will be immediately freed if not bound to a variable, leading to
         // as_ptr() giving dangling pointers!
-        let c_key = CString::new(key.clone()).unwrap();
+        let c_key = CString::new(key).unwrap();
         match unsafe { capi::pa_proplist_contains(self.0.ptr, c_key.as_ptr()) } {
             0 => Some(false),
             1 => Some(true),
@@ -499,18 +508,17 @@ impl Clone for Proplist {
     /// If this is called on a ‘weak’ instance, a non-weak object is returned.
     #[inline]
     fn clone(&self) -> Self {
-        Self::from_raw(unsafe { capi::pa_proplist_copy(self.0.ptr) })
+        self.to_owned()
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-
+/*
     /// Test that you cannot create a use-after-free situation by destroying a `Proplist` before an
     /// associated `Iterator` (we avoid `Rc`/`Arc`).
     #[test]
-    #[cfg(compile_fail)]
     fn proplist_iter_lifetime() {
         let iter = {
             let my_props = Proplist::new().unwrap();
@@ -522,7 +530,7 @@ mod tests {
             println!("key: {}", key);
         }
     }
-
+*/
     /// Test that you can however return an iterator if you convert the `Proplist` into one
     #[test]
     fn proplist_iter_lifetime_conv() {

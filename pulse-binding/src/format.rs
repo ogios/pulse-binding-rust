@@ -32,7 +32,7 @@ pub use capi::pa_prop_type_t as PropType;
 /// Represents the type of encoding used in a stream or accepted by a sink.
 #[repr(C)]
 #[non_exhaustive]
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+#[derive(Debug, Default, Copy, Clone, PartialEq, Eq)]
 #[derive(FromPrimitive, ToPrimitive)]
 #[allow(non_camel_case_types)]
 pub enum Encoding {
@@ -62,6 +62,7 @@ pub enum Encoding {
     DTSHD_IEC61937,
 
     /// Represents an invalid encoding.
+    #[default]
     Invalid = -1,
 }
 
@@ -100,18 +101,11 @@ impl From<capi::pa_encoding_t> for Encoding {
     }
 }
 
-impl Default for Encoding {
-    #[inline(always)]
-    fn default() -> Self {
-        Encoding::Invalid
-    }
-}
-
 /// Represents the format of data provided in a stream or processed by a sink.
 pub struct Info {
     /// The actual C object.
     pub(crate) ptr: *mut InfoInternal,
-    /// Wrapped property list pointer.
+    /// A nicely wrapped copy of it’s property list pointer, for convenience.
     properties: Proplist,
     /// Used to avoid freeing the internal object when used as a weak wrapper in callbacks.
     weak: bool,
@@ -161,7 +155,7 @@ impl Encoding {
     pub fn from_string(encoding: &str) -> Self {
         // Warning: New CStrings will be immediately freed if not bound to a variable, leading to
         // as_ptr() giving dangling pointers!
-        let c_enc = CString::new(encoding.clone()).unwrap();
+        let c_enc = CString::new(encoding).unwrap();
         unsafe { capi::pa_encoding_from_string(c_enc.as_ptr()).into() }
     }
 }
@@ -185,7 +179,7 @@ impl Info {
     pub fn new_from_string(s: &str) -> Option<Self> {
         // Warning: New CStrings will be immediately freed if not bound to a variable, leading to
         // as_ptr() giving dangling pointers!
-        let c_str = CString::new(s.clone()).unwrap();
+        let c_str = CString::new(s).unwrap();
         let ptr = unsafe { capi::pa_format_info_from_string(c_str.as_ptr()) };
         match ptr.is_null() {
             false => Some(Self::from_raw(ptr as *mut InfoInternal)),
@@ -217,9 +211,10 @@ impl Info {
     /// Creates a new `Info` from an existing [`InfoInternal`] pointer.
     pub(crate) fn from_raw(ptr: *mut InfoInternal) -> Self {
         assert_eq!(false, ptr.is_null());
-        // Note, yes, this should be using `from_raw_weak()`, the ‘free’ function for a format info
-        // object free’s its own proplist!
-        unsafe { Self { ptr: ptr, properties: Proplist::from_raw_weak((*ptr).list), weak: false } }
+        // Note, yes, this should be weak; the ‘free’ function for a format info object free’s its
+        // own proplist!
+        let pl = Proplist::from_raw_weak(unsafe { (*ptr).list });
+        Self { ptr: ptr, properties: pl, weak: false }
     }
 
     /// Creates a new `Info` from an existing [`InfoInternal`] pointer.
@@ -227,7 +222,17 @@ impl Info {
     /// This is the ‘weak’ version, which avoids destroying the internal object when dropped.
     pub(crate) fn from_raw_weak(ptr: *mut InfoInternal) -> Self {
         assert_eq!(false, ptr.is_null());
-        unsafe { Self { ptr: ptr, properties: Proplist::from_raw_weak((*ptr).list), weak: true } }
+        let pl = Proplist::from_raw_weak(unsafe { (*ptr).list });
+        Self { ptr: ptr, properties: pl, weak: true }
+    }
+
+    /// Returns a new `Info` struct representing the same format.
+    ///
+    /// If this is called on a ‘weak’ instance, a non-weak object is returned.
+    #[inline]
+    pub(crate) fn to_owned(&self) -> Self {
+        let ptr = unsafe { capi::pa_format_info_copy(self.ptr as *const capi::pa_format_info) };
+        Self::from_raw(ptr as *mut InfoInternal)
     }
 
     /// Checks whether the `Info` structure is valid.
@@ -314,7 +319,7 @@ impl Info {
     pub fn get_prop_type(&self, key: &str) -> PropType {
         // Warning: New CStrings will be immediately freed if not bound to a variable, leading to
         // as_ptr() giving dangling pointers!
-        let c_key = CString::new(key.clone()).unwrap();
+        let c_key = CString::new(key).unwrap();
         unsafe { capi::pa_format_info_get_prop_type(self.ptr as *const capi::pa_format_info,
             c_key.as_ptr()) }
     }
@@ -324,7 +329,7 @@ impl Info {
         // Warning: New CStrings will be immediately freed if not bound to a variable, leading to
         // as_ptr() giving dangling pointers!
         let mut i: i32 = 0;
-        let c_key = CString::new(key.clone()).unwrap();
+        let c_key = CString::new(key).unwrap();
         match unsafe { capi::pa_format_info_get_prop_int(self.ptr as *const capi::pa_format_info,
             c_key.as_ptr(), &mut i) }
         {
@@ -339,7 +344,7 @@ impl Info {
         // as_ptr() giving dangling pointers!
         let mut min: i32 = 0;
         let mut max: i32 = 0;
-        let c_key = CString::new(key.clone()).unwrap();
+        let c_key = CString::new(key).unwrap();
         match unsafe { capi::pa_format_info_get_prop_int_range(
             self.ptr as *const capi::pa_format_info, c_key.as_ptr(), &mut min, &mut max) }
         {
@@ -354,7 +359,7 @@ impl Info {
     pub fn get_prop_int_array(&self, key: &str) -> Option<Vec<i32>> {
         // Warning: New CStrings will be immediately freed if not bound to a variable, leading to
         // as_ptr() giving dangling pointers!
-        let c_key = CString::new(key.clone()).unwrap();
+        let c_key = CString::new(key).unwrap();
         let mut count: i32 = 0;
         let mut p_ints = null_mut::<i32>();
         let result = unsafe { capi::pa_format_info_get_prop_int_array(
@@ -377,7 +382,7 @@ impl Info {
     pub fn get_prop_string(&self, key: &str) -> Option<String> {
         // Warning: New CStrings will be immediately freed if not bound to a variable, leading to
         // as_ptr() giving dangling pointers!
-        let c_key = CString::new(key.clone()).unwrap();
+        let c_key = CString::new(key).unwrap();
         let mut p_str = null_mut::<c_char>();
         let result = unsafe { capi::pa_format_info_get_prop_string(
             self.ptr as *const capi::pa_format_info, c_key.as_ptr(), &mut p_str) };
@@ -395,7 +400,7 @@ impl Info {
     pub fn get_prop_string_array(&self, key: &str) -> Option<Vec<String>> {
         // Warning: New CStrings will be immediately freed if not bound to a variable, leading to
         // as_ptr() giving dangling pointers!
-        let c_key = CString::new(key.clone()).unwrap();
+        let c_key = CString::new(key).unwrap();
         let mut count: i32 = 0;
         let mut pp_str = null_mut::<*mut c_char>();
         let result = unsafe { capi::pa_format_info_get_prop_string_array(
@@ -486,16 +491,19 @@ impl Info {
     pub fn set_prop_int(&mut self, key: &str, value: i32) {
         // Warning: New CStrings will be immediately freed if not bound to a variable, leading to
         // as_ptr() giving dangling pointers!
-        let c_key = CString::new(key.clone()).unwrap();
+        let c_key = CString::new(key).unwrap();
         unsafe { capi::pa_format_info_set_prop_int(self.ptr as *mut capi::pa_format_info,
             c_key.as_ptr(), value); }
     }
 
     /// Sets a property with a list of integer values.
+    ///
+    /// Panics if length of array is larger than `i32::MAX`.
     pub fn set_prop_int_array(&mut self, key: &str, values: &[i32]) {
+        assert!(values.len() <= i32::MAX as usize);
         // Warning: New CStrings will be immediately freed if not bound to a variable, leading to
         // as_ptr() giving dangling pointers!
-        let c_key = CString::new(key.clone()).unwrap();
+        let c_key = CString::new(key).unwrap();
         unsafe { capi::pa_format_info_set_prop_int_array(self.ptr as *mut capi::pa_format_info,
             c_key.as_ptr(), values.as_ptr(), values.len() as i32); }
     }
@@ -504,7 +512,7 @@ impl Info {
     pub fn set_prop_int_range(&mut self, key: &str, min: i32, max: i32) {
         // Warning: New CStrings will be immediately freed if not bound to a variable, leading to
         // as_ptr() giving dangling pointers!
-        let c_key = CString::new(key.clone()).unwrap();
+        let c_key = CString::new(key).unwrap();
         unsafe { capi::pa_format_info_set_prop_int_range(self.ptr as *mut capi::pa_format_info,
             c_key.as_ptr(), min, max); }
     }
@@ -513,17 +521,20 @@ impl Info {
     pub fn set_prop_string(&mut self, key: &str, value: &str) {
         // Warning: New CStrings will be immediately freed if not bound to a variable, leading to
         // as_ptr() giving dangling pointers!
-        let c_key = CString::new(key.clone()).unwrap();
-        let c_value = CString::new(value.clone()).unwrap();
+        let c_key = CString::new(key).unwrap();
+        let c_value = CString::new(value).unwrap();
         unsafe { capi::pa_format_info_set_prop_string(self.ptr as *mut capi::pa_format_info,
             c_key.as_ptr(), c_value.as_ptr()); }
     }
 
     /// Sets a property with a list of string values.
+    ///
+    /// Panics if length of array is larger than `i32::MAX`.
     pub fn set_prop_string_array(&mut self, key: &str, values: &[&str]) {
+        assert!(values.len() <= i32::MAX as usize);
         // Warning: New CStrings will be immediately freed if not bound to a variable, leading to
         // as_ptr() giving dangling pointers!
-        let c_key = CString::new(key.clone()).unwrap();
+        let c_key = CString::new(key).unwrap();
         let mut c_values: Vec<CString> = Vec::with_capacity(values.len());
         for v in values {
             c_values.push(CString::new(*v).unwrap());
@@ -566,9 +577,11 @@ impl Info {
     /// Note for PCM: If the channel count is left unspecified in the `Info` object, then the server
     /// will select the stream channel count. In that case the stream channel count will most likely
     /// match the device channel count, meaning that up/downmixing will be avoided.
+    ///
+    /// Panics if `channels` is larger than can be submitted to the C function.
     #[inline]
     pub fn set_channels(&mut self, channels: u32) {
-        debug_assert!(channels <= std::i32::MAX as u32);
+        assert!(channels <= std::i32::MAX as u32);
         unsafe { capi::pa_format_info_set_channels(self.ptr as *mut capi::pa_format_info,
             channels as i32) }
     }
@@ -594,11 +607,10 @@ impl Drop for Info {
 }
 
 impl Clone for Info {
-    /// Returns a new `Info` struct and representing the same format. If this is called on a ‘weak’
-    /// instance, a non-weak object is returned.
+    /// Returns a new `Info` struct and representing the same format.
+    ///
+    /// If this is called on a ‘weak’ instance, a non-weak object is returned.
     fn clone(&self) -> Self {
-        let ptr = unsafe { capi::pa_format_info_copy(self.ptr as *const capi::pa_format_info) };
-        assert_eq!(false, ptr.is_null());
-        Self::from_raw(ptr as *mut InfoInternal)
+        self.to_owned()
     }
 }

@@ -298,7 +298,7 @@ pub struct SinkPortInfo<'a> {
     pub r#type: DevicePortType,
 }
 
-impl<'a> SinkPortInfo<'a> {
+impl SinkPortInfo<'_> {
     fn new_from_raw(p: *const SinkPortInfoInternal) -> Self {
         assert!(!p.is_null());
         let src = unsafe { &*p };
@@ -322,6 +322,17 @@ impl<'a> SinkPortInfo<'a> {
                 #[cfg(any(doc, feature = "pa_v14"))]
                 r#type: DevicePortType::from_u32(src.r#type).unwrap(),
             }
+        }
+    }
+
+    /// Creates a copy with owned data.
+    pub fn to_owned(&self) -> SinkPortInfo<'static> {
+        SinkPortInfo {
+            name: self.name.clone().map(|o| Cow::Owned(o.into_owned())),
+            description: self.description.clone().map(|o| Cow::Owned(o.into_owned())),
+            #[cfg(any(doc, feature = "pa_v14"))]
+            availability_group: self.availability_group.clone().map(|o| Cow::Owned(o.into_owned())),
+            ..*self
         }
     }
 }
@@ -379,7 +390,7 @@ pub struct SinkInfo<'a> {
     pub formats: Vec<format::Info>,
 }
 
-impl<'a> SinkInfo<'a> {
+impl SinkInfo<'_> {
     fn new_from_raw(p: *const SinkInfoInternal) -> Self {
         assert!(!p.is_null());
         let src = unsafe { &*p };
@@ -452,6 +463,21 @@ impl<'a> SinkInfo<'a> {
             }
         }
     }
+
+    /// Creates a copy with owned data.
+    pub fn to_owned(&self) -> SinkInfo<'static> {
+        SinkInfo {
+            name: self.name.clone().map(|o| Cow::Owned(o.into_owned())),
+            description: self.description.clone().map(|o| Cow::Owned(o.into_owned())),
+            monitor_source_name: self.monitor_source_name.clone().map(|o| Cow::Owned(o.into_owned())),
+            driver: self.driver.clone().map(|o| Cow::Owned(o.into_owned())),
+            proplist: self.proplist.to_owned(),
+            ports: self.ports.iter().map(SinkPortInfo::to_owned).collect(),
+            active_port: self.active_port.as_ref().map(|ap| Box::new(ap.as_ref().to_owned())),
+            formats: self.formats.iter().map(format::Info::to_owned).collect(),
+            ..*self
+        }
+    }
 }
 
 impl Introspector {
@@ -464,7 +490,7 @@ impl Introspector {
     {
         // Warning: New CStrings will be immediately freed if not bound to a variable, leading to
         // as_ptr() giving dangling pointers!
-        let c_name = CString::new(name.clone()).unwrap();
+        let c_name = CString::new(name).unwrap();
 
         let cb_data = box_closure_get_capi_ptr::<dyn FnMut(ListResult<&SinkInfo>)>(Box::new(callback));
         let ptr = unsafe { capi::pa_context_get_sink_info_by_name(self.context, c_name.as_ptr(),
@@ -522,7 +548,7 @@ impl Introspector {
     {
         // Warning: New CStrings will be immediately freed if not bound to a variable, leading to
         // as_ptr() giving dangling pointers!
-        let c_name = CString::new(name.clone()).unwrap();
+        let c_name = CString::new(name).unwrap();
 
         let (cb_fn, cb_data): (Option<extern "C" fn(_, _, _)>, _) =
             get_su_capi_params::<_, _>(callback, super::success_cb_proxy);
@@ -556,7 +582,7 @@ impl Introspector {
     {
         // Warning: New CStrings will be immediately freed if not bound to a variable, leading to
         // as_ptr() giving dangling pointers!
-        let c_name = CString::new(name.clone()).unwrap();
+        let c_name = CString::new(name).unwrap();
 
         let (cb_fn, cb_data): (Option<extern "C" fn(_, _, _)>, _) =
             get_su_capi_params::<_, _>(callback, super::success_cb_proxy);
@@ -575,7 +601,7 @@ impl Introspector {
     {
         // Warning: New CStrings will be immediately freed if not bound to a variable, leading to
         // as_ptr() giving dangling pointers!
-        let c_name = CString::new(sink_name.clone()).unwrap();
+        let c_name = CString::new(sink_name).unwrap();
 
         let (cb_fn, cb_data): (Option<extern "C" fn(_, _, _)>, _) =
             get_su_capi_params::<_, _>(callback, super::success_cb_proxy);
@@ -610,7 +636,7 @@ impl Introspector {
     {
         // Warning: New CStrings will be immediately freed if not bound to a variable, leading to
         // as_ptr() giving dangling pointers!
-        let c_port = CString::new(port.clone()).unwrap();
+        let c_port = CString::new(port).unwrap();
 
         let (cb_fn, cb_data): (Option<extern "C" fn(_, _, _)>, _) =
             get_su_capi_params::<_, _>(callback, super::success_cb_proxy);
@@ -629,8 +655,8 @@ impl Introspector {
     {
         // Warning: New CStrings will be immediately freed if not bound to a variable, leading to
         // as_ptr() giving dangling pointers!
-        let c_name = CString::new(name.clone()).unwrap();
-        let c_port = CString::new(port.clone()).unwrap();
+        let c_name = CString::new(name).unwrap();
+        let c_port = CString::new(port).unwrap();
 
         let (cb_fn, cb_data): (Option<extern "C" fn(_, _, _)>, _) =
             get_su_capi_params::<_, _>(callback, super::success_cb_proxy);
@@ -699,7 +725,7 @@ pub struct SourcePortInfo<'a> {
     pub r#type: DevicePortType,
 }
 
-impl<'a> SourcePortInfo<'a> {
+impl SourcePortInfo<'_> {
     fn new_from_raw(p: *const SourcePortInfoInternal) -> Self {
         assert!(!p.is_null());
         let src = unsafe { &*p };
@@ -723,6 +749,17 @@ impl<'a> SourcePortInfo<'a> {
                 #[cfg(any(doc, feature = "pa_v14"))]
                 r#type: DevicePortType::from_u32(src.r#type).unwrap(),
             }
+        }
+    }
+
+    /// Creates a copy with owned data.
+    pub fn to_owned(&self) -> SourcePortInfo<'static> {
+        SourcePortInfo {
+            name: self.name.clone().map(|o| Cow::Owned(o.into_owned())),
+            description: self.description.clone().map(|o| Cow::Owned(o.into_owned())),
+            #[cfg(any(doc, feature = "pa_v14"))]
+            availability_group: self.availability_group.clone().map(|o| Cow::Owned(o.into_owned())),
+            ..*self
         }
     }
 }
@@ -780,7 +817,7 @@ pub struct SourceInfo<'a> {
     pub formats: Vec<format::Info>,
 }
 
-impl<'a> SourceInfo<'a> {
+impl SourceInfo<'_> {
     fn new_from_raw(p: *const SourceInfoInternal) -> Self {
         assert!(!p.is_null());
         let src = unsafe { &*p };
@@ -856,6 +893,21 @@ impl<'a> SourceInfo<'a> {
             }
         }
     }
+
+    /// Creates a copy with owned data.
+    pub fn to_owned(&self) -> SourceInfo<'static> {
+        SourceInfo {
+            name: self.name.clone().map(|o| Cow::Owned(o.into_owned())),
+            description: self.description.clone().map(|o| Cow::Owned(o.into_owned())),
+            monitor_of_sink_name: self.monitor_of_sink_name.clone().map(|o| Cow::Owned(o.into_owned())),
+            driver: self.driver.clone().map(|o| Cow::Owned(o.into_owned())),
+            proplist: self.proplist.to_owned(),
+            ports: self.ports.iter().map(SourcePortInfo::to_owned).collect(),
+            active_port: self.active_port.as_ref().map(|ap| Box::new(ap.as_ref().to_owned())),
+            formats: self.formats.iter().map(format::Info::to_owned).collect(),
+            ..*self
+        }
+    }
 }
 
 impl Introspector {
@@ -868,7 +920,7 @@ impl Introspector {
     {
         // Warning: New CStrings will be immediately freed if not bound to a variable, leading to
         // as_ptr() giving dangling pointers!
-        let c_name = CString::new(name.clone()).unwrap();
+        let c_name = CString::new(name).unwrap();
 
         let cb_data = box_closure_get_capi_ptr::<dyn FnMut(ListResult<&SourceInfo>)>(Box::new(callback));
         let ptr = unsafe { capi::pa_context_get_source_info_by_name(self.context, c_name.as_ptr(),
@@ -927,7 +979,7 @@ impl Introspector {
     {
         // Warning: New CStrings will be immediately freed if not bound to a variable, leading to
         // as_ptr() giving dangling pointers!
-        let c_name = CString::new(name.clone()).unwrap();
+        let c_name = CString::new(name).unwrap();
 
         let (cb_fn, cb_data): (Option<extern "C" fn(_, _, _)>, _) =
             get_su_capi_params::<_, _>(callback, super::success_cb_proxy);
@@ -961,7 +1013,7 @@ impl Introspector {
     {
         // Warning: New CStrings will be immediately freed if not bound to a variable, leading to
         // as_ptr() giving dangling pointers!
-        let c_name = CString::new(name.clone()).unwrap();
+        let c_name = CString::new(name).unwrap();
 
         let (cb_fn, cb_data): (Option<extern "C" fn(_, _, _)>, _) =
             get_su_capi_params::<_, _>(callback, super::success_cb_proxy);
@@ -980,7 +1032,7 @@ impl Introspector {
     {
         // Warning: New CStrings will be immediately freed if not bound to a variable, leading to
         // as_ptr() giving dangling pointers!
-        let c_name = CString::new(name.clone()).unwrap();
+        let c_name = CString::new(name).unwrap();
 
         let (cb_fn, cb_data): (Option<extern "C" fn(_, _, _)>, _) =
             get_su_capi_params::<_, _>(callback, super::success_cb_proxy);
@@ -1015,7 +1067,7 @@ impl Introspector {
     {
         // Warning: New CStrings will be immediately freed if not bound to a variable, leading to
         // as_ptr() giving dangling pointers!
-        let c_port = CString::new(port.clone()).unwrap();
+        let c_port = CString::new(port).unwrap();
 
         let (cb_fn, cb_data): (Option<extern "C" fn(_, _, _)>, _) =
             get_su_capi_params::<_, _>(callback, super::success_cb_proxy);
@@ -1034,8 +1086,8 @@ impl Introspector {
     {
         // Warning: New CStrings will be immediately freed if not bound to a variable, leading to
         // as_ptr() giving dangling pointers!
-        let c_name = CString::new(name.clone()).unwrap();
-        let c_port = CString::new(port.clone()).unwrap();
+        let c_name = CString::new(name).unwrap();
+        let c_port = CString::new(port).unwrap();
 
         let (cb_fn, cb_data): (Option<extern "C" fn(_, _, _)>, _) =
             get_su_capi_params::<_, _>(callback, super::success_cb_proxy);
@@ -1087,7 +1139,7 @@ pub struct ServerInfo<'a> {
     pub channel_map: channelmap::Map,
 }
 
-impl<'a> ServerInfo<'a> {
+impl ServerInfo<'_> {
     fn new_from_raw(p: *const ServerInfoInternal) -> Self {
         assert!(!p.is_null());
         let src = unsafe { &*p };
@@ -1121,6 +1173,19 @@ impl<'a> ServerInfo<'a> {
                 cookie: src.cookie,
                 channel_map: src.channel_map.into(),
             }
+        }
+    }
+
+    /// Creates a copy with owned data.
+    pub fn to_owned(&self) -> ServerInfo<'static> {
+        ServerInfo {
+            user_name: self.user_name.clone().map(|o| Cow::Owned(o.into_owned())),
+            host_name: self.host_name.clone().map(|o| Cow::Owned(o.into_owned())),
+            server_version: self.server_version.clone().map(|o| Cow::Owned(o.into_owned())),
+            server_name: self.server_name.clone().map(|o| Cow::Owned(o.into_owned())),
+            default_sink_name: self.default_sink_name.clone().map(|o| Cow::Owned(o.into_owned())),
+            default_source_name: self.default_source_name.clone().map(|o| Cow::Owned(o.into_owned())),
+            ..*self
         }
     }
 }
@@ -1177,7 +1242,7 @@ pub struct ModuleInfo<'a> {
     pub proplist: Proplist,
 }
 
-impl<'a> ModuleInfo<'a> {
+impl ModuleInfo<'_> {
     fn new_from_raw(p: *const ModuleInfoInternal) -> Self {
         assert!(!p.is_null());
         let src = unsafe { &*p };
@@ -1198,6 +1263,16 @@ impl<'a> ModuleInfo<'a> {
                 },
                 proplist: Proplist::from_raw_weak(src.proplist),
             }
+        }
+    }
+
+    /// Creates a copy with owned data.
+    pub fn to_owned(&self) -> ModuleInfo<'static> {
+        ModuleInfo {
+            name: self.name.clone().map(|o| Cow::Owned(o.into_owned())),
+            argument: self.argument.clone().map(|o| Cow::Owned(o.into_owned())),
+            proplist: self.proplist.to_owned(),
+            ..*self
         }
     }
 }
@@ -1239,8 +1314,8 @@ impl Introspector {
     {
         // Warning: New CStrings will be immediately freed if not bound to a variable, leading to
         // as_ptr() giving dangling pointers!
-        let c_name = CString::new(name.clone()).unwrap();
-        let c_arg = CString::new(argument.clone()).unwrap();
+        let c_name = CString::new(name).unwrap();
+        let c_arg = CString::new(argument).unwrap();
 
         let cb_data = box_closure_get_capi_ptr::<dyn FnMut(u32)>(Box::new(callback));
         let ptr = unsafe { capi::pa_context_load_module(self.context, c_name.as_ptr(),
@@ -1334,13 +1409,9 @@ fn send_message_to_object_cb_proxy(_: *mut ContextInternal, success: i32, respon
         _ => true,
     };
     let _ = std::panic::catch_unwind(|| {
-        let r = match response.is_null() {
-            true => None,
-            false => {
-                let tmp = unsafe { CStr::from_ptr(response) };
-                Some(tmp.to_string_lossy().into_owned())
-            },
-        };
+        let r = response.is_null().then(|| {
+            unsafe { CStr::from_ptr(response) }.to_string_lossy().into_owned()
+        });
         // Note, destroys closure callback after use - restoring outer box means it gets dropped
         let mut callback = get_su_callback::<dyn FnMut(bool, Option<String>)>(userdata);
         (callback)(success_actual, r);
@@ -1369,7 +1440,7 @@ pub struct ClientInfo<'a> {
     pub proplist: Proplist,
 }
 
-impl<'a> ClientInfo<'a> {
+impl ClientInfo<'_> {
     fn new_from_raw(p: *const ClientInfoInternal) -> Self {
         assert!(!p.is_null());
         let src = unsafe { &*p };
@@ -1390,6 +1461,16 @@ impl<'a> ClientInfo<'a> {
                 },
                 proplist: Proplist::from_raw_weak(src.proplist),
             }
+        }
+    }
+
+    /// Creates a copy with owned data.
+    pub fn to_owned(&self) -> ClientInfo<'static> {
+        ClientInfo {
+            name: self.name.clone().map(|o| Cow::Owned(o.into_owned())),
+            driver: self.driver.clone().map(|o| Cow::Owned(o.into_owned())),
+            proplist: self.proplist.to_owned(),
+            ..*self
         }
     }
 }
@@ -1452,10 +1533,6 @@ fn get_client_info_list_cb_proxy(_: *mut ContextInternal, i: *const ClientInfoIn
 // Card info
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
-/// Backwards compatable alias
-#[deprecated(since = "2.28.0", note = "Use the name CardProfileInfo instead")]
-pub type CardProfileInfo2<'a> = CardProfileInfo<'a>;
-
 /// Stores information about a specific profile of a card.
 ///
 /// Please note that this structure can be extended as part of evolutionary API updates at any time
@@ -1479,7 +1556,7 @@ pub struct CardProfileInfo<'a> {
     pub available: bool,
 }
 
-impl<'a> CardProfileInfo<'a> {
+impl CardProfileInfo<'_> {
     fn new_from_raw(p: *const CardProfileInfoInternal) -> Self {
         assert!(!p.is_null());
         let src = unsafe { &*p };
@@ -1501,6 +1578,15 @@ impl<'a> CardProfileInfo<'a> {
                     _ => true,
                 },
             }
+        }
+    }
+
+    /// Creates a copy with owned data.
+    pub fn to_owned(&self) -> CardProfileInfo<'static> {
+        CardProfileInfo {
+            name: self.name.clone().map(|o| Cow::Owned(o.into_owned())),
+            description: self.description.clone().map(|o| Cow::Owned(o.into_owned())),
+            ..*self
         }
     }
 }
@@ -1554,7 +1640,7 @@ pub struct CardPortInfo<'a> {
     pub r#type: DevicePortType,
 }
 
-impl<'a> CardPortInfo<'a> {
+impl CardPortInfo<'_> {
     fn new_from_raw(p: *const CardPortInfoInternal) -> Self {
         assert!(!p.is_null());
         let src = unsafe { &*p };
@@ -1596,6 +1682,19 @@ impl<'a> CardPortInfo<'a> {
             }
         }
     }
+
+    /// Creates a copy with owned data.
+    pub fn to_owned(&self) -> CardPortInfo<'static> {
+        CardPortInfo {
+            name: self.name.clone().map(|o| Cow::Owned(o.into_owned())),
+            description: self.description.clone().map(|o| Cow::Owned(o.into_owned())),
+            proplist: self.proplist.to_owned(),
+            profiles: self.profiles.iter().map(CardProfileInfo::to_owned).collect(),
+            #[cfg(any(doc, feature = "pa_v14"))]
+            availability_group: self.availability_group.clone().map(|o| Cow::Owned(o.into_owned())),
+            ..*self
+        }
+    }
 }
 
 /// Stores information about cards.
@@ -1622,7 +1721,7 @@ pub struct CardInfo<'a> {
     pub active_profile: Option<Box<CardProfileInfo<'a>>>,
 }
 
-impl<'a> CardInfo<'a> {
+impl CardInfo<'_> {
     fn new_from_raw(p: *const CardInfoInternal) -> Self {
         assert!(!p.is_null());
         let src = unsafe { &*p };
@@ -1671,6 +1770,19 @@ impl<'a> CardInfo<'a> {
             }
         }
     }
+
+    /// Creates a copy with owned data.
+    pub fn to_owned(&self) -> CardInfo<'static> {
+        CardInfo {
+            name: self.name.clone().map(|o| Cow::Owned(o.into_owned())),
+            driver: self.driver.clone().map(|o| Cow::Owned(o.into_owned())),
+            proplist: self.proplist.to_owned(),
+            ports: self.ports.iter().map(CardPortInfo::to_owned).collect(),
+            profiles: self.profiles.iter().map(CardProfileInfo::to_owned).collect(),
+            active_profile: self.active_profile.as_ref().map(|ap| Box::new(ap.as_ref().to_owned())),
+            ..*self
+        }
+    }
 }
 
 impl Introspector {
@@ -1696,7 +1808,7 @@ impl Introspector {
     {
         // Warning: New CStrings will be immediately freed if not bound to a variable, leading to
         // as_ptr() giving dangling pointers!
-        let c_name = CString::new(name.clone()).unwrap();
+        let c_name = CString::new(name).unwrap();
 
         let cb_data = box_closure_get_capi_ptr::<dyn FnMut(ListResult<&CardInfo>)>(Box::new(callback));
         let ptr = unsafe { capi::pa_context_get_card_info_by_name(self.context, c_name.as_ptr(),
@@ -1726,7 +1838,7 @@ impl Introspector {
     {
         // Warning: New CStrings will be immediately freed if not bound to a variable, leading to
         // as_ptr() giving dangling pointers!
-        let c_profile = CString::new(profile.clone()).unwrap();
+        let c_profile = CString::new(profile).unwrap();
 
         let (cb_fn, cb_data): (Option<extern "C" fn(_, _, _)>, _) =
             get_su_capi_params::<_, _>(callback, super::success_cb_proxy);
@@ -1745,8 +1857,8 @@ impl Introspector {
     {
         // Warning: New CStrings will be immediately freed if not bound to a variable, leading to
         // as_ptr() giving dangling pointers!
-        let c_name = CString::new(name.clone()).unwrap();
-        let c_profile = CString::new(profile.clone()).unwrap();
+        let c_name = CString::new(name).unwrap();
+        let c_profile = CString::new(profile).unwrap();
 
         let (cb_fn, cb_data): (Option<extern "C" fn(_, _, _)>, _) =
             get_su_capi_params::<_, _>(callback, super::success_cb_proxy);
@@ -1765,8 +1877,8 @@ impl Introspector {
     {
         // Warning: New CStrings will be immediately freed if not bound to a variable, leading to
         // as_ptr() giving dangling pointers!
-        let c_name = CString::new(card_name.clone()).unwrap();
-        let c_port = CString::new(port_name.clone()).unwrap();
+        let c_name = CString::new(card_name).unwrap();
+        let c_port = CString::new(port_name).unwrap();
 
         let (cb_fn, cb_data): (Option<extern "C" fn(_, _, _)>, _) =
             get_su_capi_params::<_, _>(callback, super::success_cb_proxy);
@@ -1841,7 +1953,7 @@ pub struct SinkInputInfo<'a> {
     pub format: format::Info,
 }
 
-impl<'a> SinkInputInfo<'a> {
+impl SinkInputInfo<'_> {
     fn new_from_raw(p: *const SinkInputInfoInternal) -> Self {
         assert!(!p.is_null());
         let src = unsafe { &*p };
@@ -1895,6 +2007,18 @@ impl<'a> SinkInputInfo<'a> {
             }
         }
     }
+
+    /// Creates a copy with owned data.
+    pub fn to_owned(&self) -> SinkInputInfo<'static> {
+        SinkInputInfo {
+            name: self.name.clone().map(|o| Cow::Owned(o.into_owned())),
+            resample_method: self.resample_method.clone().map(|o| Cow::Owned(o.into_owned())),
+            driver: self.driver.clone().map(|o| Cow::Owned(o.into_owned())),
+            proplist: self.proplist.to_owned(),
+            format: self.format.to_owned(),
+            ..*self
+        }
+    }
 }
 
 impl Introspector {
@@ -1936,7 +2060,7 @@ impl Introspector {
     {
         // Warning: New CStrings will be immediately freed if not bound to a variable, leading to
         // as_ptr() giving dangling pointers!
-        let c_name = CString::new(sink_name.clone()).unwrap();
+        let c_name = CString::new(sink_name).unwrap();
 
         let (cb_fn, cb_data): (Option<extern "C" fn(_, _, _)>, _) =
             get_su_capi_params::<_, _>(callback, super::success_cb_proxy);
@@ -2070,7 +2194,7 @@ pub struct SourceOutputInfo<'a> {
     pub format: format::Info,
 }
 
-impl<'a> SourceOutputInfo<'a> {
+impl SourceOutputInfo<'_> {
     fn new_from_raw(p: *const SourceOutputInfoInternal) -> Self {
         assert!(!p.is_null());
         let src = unsafe { &*p };
@@ -2124,6 +2248,18 @@ impl<'a> SourceOutputInfo<'a> {
             }
         }
     }
+
+    /// Creates a copy with owned data.
+    pub fn to_owned(&self) -> SourceOutputInfo<'static> {
+        SourceOutputInfo {
+            name: self.name.clone().map(|o| Cow::Owned(o.into_owned())),
+            resample_method: self.resample_method.clone().map(|o| Cow::Owned(o.into_owned())),
+            driver: self.driver.clone().map(|o| Cow::Owned(o.into_owned())),
+            proplist: self.proplist.to_owned(),
+            format: self.format.to_owned(),
+            ..*self
+        }
+    }
 }
 
 impl Introspector {
@@ -2165,7 +2301,7 @@ impl Introspector {
     {
         // Warning: New CStrings will be immediately freed if not bound to a variable, leading to
         // as_ptr() giving dangling pointers!
-        let c_name = CString::new(source_name.clone()).unwrap();
+        let c_name = CString::new(source_name).unwrap();
 
         let (cb_fn, cb_data): (Option<extern "C" fn(_, _, _)>, _) =
             get_su_capi_params::<_, _>(callback, super::success_cb_proxy);
@@ -2309,7 +2445,7 @@ pub struct SampleInfo<'a> {
     pub proplist: Proplist,
 }
 
-impl<'a> SampleInfo<'a> {
+impl SampleInfo<'_> {
     fn new_from_raw(p: *const SampleInfoInternal) -> Self {
         assert!(!p.is_null());
         let src = unsafe { &*p };
@@ -2337,6 +2473,16 @@ impl<'a> SampleInfo<'a> {
             }
         }
     }
+
+    /// Creates a copy with owned data.
+    pub fn to_owned(&self) -> SampleInfo<'static> {
+        SampleInfo {
+            name: self.name.clone().map(|o| Cow::Owned(o.into_owned())),
+            filename: self.filename.clone().map(|o| Cow::Owned(o.into_owned())),
+            proplist: self.proplist.to_owned(),
+            ..*self
+        }
+    }
 }
 
 impl Introspector {
@@ -2349,7 +2495,7 @@ impl Introspector {
     {
         // Warning: New CStrings will be immediately freed if not bound to a variable, leading to
         // as_ptr() giving dangling pointers!
-        let c_name = CString::new(name.clone()).unwrap();
+        let c_name = CString::new(name).unwrap();
 
         let cb_data = box_closure_get_capi_ptr::<dyn FnMut(ListResult<&SampleInfo>)>(Box::new(callback));
         let ptr = unsafe { capi::pa_context_get_sample_info_by_name(self.context, c_name.as_ptr(),

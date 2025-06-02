@@ -1,3 +1,39 @@
+# 2.30.1 (April 19th, 2025)
+
+ * Added a length check to the stream `new_extended()` method (missed in previous version).
+ * Added a length check to the stream restore `write()` method (missed in previous version).
+
+# 2.30.0 (April 19th, 2025)
+
+ * Added `to_owned()` methods to a bunch of introspection objects (as requested back in 2021 in
+   issue 44). Thanks to @t4ccer on github for prompting this and providing an initial partial
+   implementation.
+ * Added `set_corked_state()` method to `Stream` providing an alternative to using `cork()` and
+   `uncork()`.
+ * Added length checks to the `set_prop_int_array()` and `set_prop_string_array()` methods of
+   `format::Info`. Now should you happen to pass in an array with a length larger than can fit
+   within the `len` parameter of the C function, it will panic.
+ * Dropped additional long-deprecated constants, missed in the previous version.
+ * Dropped long-deprecated `check_version()` function.
+ * Dropped deprecated `CardProfileInfo2` introspection alias.
+
+# 2.29.0 (March 3rd, 2025)
+
+ * Bumped MSRV from 1.56 to 1.63 per libc dependency.
+ * Fixed warnings by removing explicit calls to `clone()` that have become unnecessary.
+ * Fixed warnings by bumping `num-derive` dependency.
+ * Bumped `bitflags` dependency to version 2.x (required adding `Debug` to a few flagsets).
+ * Dropped various constants that were deprecated back in versions 2.20 and 2.21 (December 2020).
+ * Updated with PA version 17 changes (just an increase to max. sample rate).
+ * Updated required dependencies:
+    - `libpulse-sys` from 1.21 to 1.22.
+    - `num-derive` from 0.3 to 0.4.
+    - `bitflags` from 1.2 to 2.x.
+
+# 2.28.3 (March 2nd, 2025)
+
+ * Clarify in documenation that mainloop and context objects must both live for the entire duration.
+
 # 2.28.2 (November 27th, 2024)
 
  * Fixed crash when audio device has null device but non-null name, thanks to @AdriaanPrinsloo on

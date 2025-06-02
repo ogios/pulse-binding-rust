@@ -33,7 +33,7 @@ pub struct RolePriorityInfo<'a> {
     pub priority: u32,
 }
 
-impl<'a> RolePriorityInfo<'a> {
+impl RolePriorityInfo<'_> {
     fn new_from_raw(p: *const RolePriorityInfoInternal) -> Self {
         assert!(!p.is_null());
         let src = unsafe { p.as_ref().unwrap() };
@@ -45,6 +45,14 @@ impl<'a> RolePriorityInfo<'a> {
                 },
                 priority: src.priority,
             }
+        }
+    }
+
+    /// Creates a copy with owned data.
+    pub fn to_owned(&self) -> RolePriorityInfo<'static> {
+        RolePriorityInfo {
+            role: self.role.clone().map(|o| Cow::Owned(o.into_owned())),
+            ..*self
         }
     }
 }
@@ -66,7 +74,7 @@ pub struct Info<'a> {
     pub role_priorities: Vec<RolePriorityInfo<'a>>,
 }
 
-impl<'a> Info<'a> {
+impl Info<'_> {
     fn new_from_raw(p: *const InfoInternal) -> Self {
         assert!(!p.is_null());
         let src = unsafe { p.as_ref().unwrap() };
@@ -100,6 +108,17 @@ impl<'a> Info<'a> {
                 },
                 role_priorities: rp_vec,
             }
+        }
+    }
+
+    /// Creates a copy with owned data.
+    pub fn to_owned(&self) -> Info<'static> {
+        Info {
+            name: self.name.clone().map(|o| Cow::Owned(o.into_owned())),
+            description: self.description.clone().map(|o| Cow::Owned(o.into_owned())),
+            icon: self.icon.clone().map(|o| Cow::Owned(o.into_owned())),
+            role_priorities: self.role_priorities.iter().map(RolePriorityInfo::to_owned).collect(),
+            ..*self
         }
     }
 }
@@ -175,8 +194,8 @@ impl DeviceManager {
     {
         // Warning: New CStrings will be immediately freed if not bound to a
         // variable, leading to as_ptr() giving dangling pointers!
-        let c_dev = CString::new(device.clone()).unwrap();
-        let c_desc = CString::new(description.clone()).unwrap();
+        let c_dev = CString::new(device).unwrap();
+        let c_desc = CString::new(description).unwrap();
 
         let cb_data = box_closure_get_capi_ptr::<dyn FnMut(bool)>(Box::new(callback));
         let ptr = unsafe {
@@ -243,7 +262,7 @@ impl DeviceManager {
     {
         // Warning: New CStrings will be immediately freed if not bound to a variable, leading to
         // as_ptr() giving dangling pointers!
-        let c_role = CString::new(role.clone()).unwrap();
+        let c_role = CString::new(role).unwrap();
         let mut c_devs: Vec<CString> = Vec::with_capacity(devices.len());
         for device in devices {
             c_devs.push(CString::new(*device).unwrap());
